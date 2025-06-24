@@ -1,16 +1,60 @@
-# This is a sample Python script.
-
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+import asyncio
+from database.requests import get_projects, get_tasks, create_project, create_task
+from database.models import async_main
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+async def main():
+    print("🔧 Инициализация базы данных...")
+    await async_main()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    while True:
+        print("\n--- Меню ---")
+        print("1. Создать проект")
+        print("2. Посмотреть проекты")
+        print("3. Добавить задачу к проекту")
+        print("4. Посмотреть задачи проекта")
+        print("5. Завершить задачу")
+        print("6. Выйти")
+
+        choice = input("Выберите опцию: ")
+
+        if choice == "1":
+            name = input("Введите название проекта: ")
+            await create_project(name)
+
+        elif choice == "2":
+            projects = await get_projects()
+            print("\n📋 Проекты:")
+            for p in projects:
+                print(f"ID: {p.id} | Название: {p.name}")
+
+        elif choice == "3":
+            projects = await get_projects()
+            print("\n📋 Выберите ID проекта:")
+            for p in projects:
+                print(f"ID: {p.id} | Название: {p.name}")
+            id = int(input("ID проекта: "))
+            name = input("Введите название задачи: ")
+            description = input("Введите описание задачи: ")
+            await create_task(name=name, description=description, project_id=id)
+
+        elif choice == "4":
+            project_id = int(input("Введите ID проекта: "))
+            tasks = await get_tasks(project_id)
+            print("\n📋 Задачи:")
+            for t in tasks:
+                print(f"ID: {t.id} | {t.name}")
+
+        elif choice == "5":
+            print("Ещё не поддерживается")
+
+        elif choice == "6":
+            print("👋 Выход.")
+            break
+
+        else:
+            print("❌ Неверный выбор.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
