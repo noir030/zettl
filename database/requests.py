@@ -1,6 +1,6 @@
 from database.models import async_session
 from database.models import Project, Task
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 
 
 async def get_projects():
@@ -16,6 +16,13 @@ async def get_tasks(project_id: int):
 async def create_project(name: str):
     async with async_session() as session:
         session.add(Project(name=name))
+        await session.commit()
+
+
+async def delete_project(project_id: int):
+    async with async_session() as session:
+        await session.execute(delete(Task).where(Task.project == project_id))
+        await session.execute(delete(Project).where(Project.id == project_id))
         await session.commit()
 
 

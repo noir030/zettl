@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 
 from database.models import async_main
-from database.requests import get_projects, get_tasks, create_project, create_task, complete_task
+from database.requests import get_projects, get_tasks, create_project, create_task, complete_task, delete_project
 
 
 class App:
@@ -29,12 +29,14 @@ class App:
 
         self.task_frame = ttk.Frame(root, style="TFrame", padding=10)
         self.task_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
+        self.tasks_label = ttk.Label(self.task_frame, text="Aufgaben")
+        self.tasks_label.pack(side=tk.TOP, pady=(0, 10))
 
         self.add_project_button = ttk.Button(self.project_frame, text="Projekt erstellen", command=self.add_project_dialog)
         self.add_project_button.pack(side=tk.BOTTOM, anchor=tk.CENTER, padx=20, pady=20)
 
         self.add_task_button = ttk.Button(self.task_frame, text="Task hinzufügen")
+        self.delete_project_button = ttk.Button(self.task_frame, text="Projekt löschen")
     
     async def initialize(self):
         await async_main()
@@ -75,6 +77,9 @@ class App:
         self.add_task_button.config(command=lambda: self.add_task_dialog(project_id))
         self.add_task_button.pack(side=tk.BOTTOM, anchor=tk.SE, padx=20, pady=20)
 
+        self.delete_project_button.config(command=lambda: asyncio.create_task(self.delete_project(project_id)))
+        self.delete_project_button.pack(side=tk.BOTTOM, anchor=tk.SE, padx=20, pady=20)
+
         tasks = await get_tasks(project_id)
 
         for index, task in enumerate(tasks):
@@ -84,7 +89,21 @@ class App:
             label = ttk.Label(frame, text=f"{index + 1}: {task.name} — {task.status}", background="#293133", foreground="white")
             label.pack(side=tk.LEFT, padx=5)
 
+            if task.status != "Erledigt":
+                btn = ttk.Button(frame, text="Abschließen", command=lambda task_id=task.id: asyncio.create_task(self.finish_task(task_id)))
+                btn.pack(side=tk.RIGHT)
+
             self.tasks_widgets.append(frame)
+
+    async def delete_project(self, project_id):
+        await delete_project(project_id)
+        await self.load_projects()
+        await self.load_tasks(0)
+
+        self.add_task_button.pack_forget()
+        self.delete_project_button.pack_forget()
+
+        messagebox.showinfo("Nachricht", f"Projekt wurde erfolgreich gelöscht ✅")
     
     def add_task_dialog(self, project_id):
         name = simpledialog.askstring("Neue Aufgabe", "Name:")
@@ -92,6 +111,16 @@ class App:
         if name and description:
             asyncio.create_task(self.create_task_and_reload(name, description, project_id))
     
+    async def finish_task(self, task_id):
+        await complete_task(task_id)
+        selection = self.project_listbox.curselection()
+        if selection:
+            index = selection[0]
+            project = self.projects[index]
+            await self.load_tasks(project.id)
+        messagebox.showinfo("Aufgabe abgeschlossen", f"Aufgaben-ID {task_id} wird als erledigt markiert ✅")
+
+
     async def create_task_and_reload(self, name, description, project_id):
         await create_task(name, description, project_id)
         await self.load_tasks(project_id)
